@@ -2,64 +2,115 @@
 
 namespace App\Http\Controllers\VersionOne;
 
+use App\Helpers\AppHelper;
+use App\Helpers\ChartsForLineAndBar;
+use App\Helpers\DashboardWidgetCard;
 use App\Http\Controllers\Controller;
-use App\Models\VersionOne\Farm;
 use App\Models\VersionOne\FarmerCultivationDetail;
 use App\Models\VersionOne\Product;
 use App\Models\VersionOne\Region;
 use DB;
-use http\Env\Response;
-use Illuminate\Http\Request;
+use Request;
 
 class DashboardController extends Controller
 {
-    function dashboard(){
-//        //
-        $regionsHasFarms = Region::regionsHasFarm("Arusha")
-            //->take(2)
+    function dashboard()
+    {
+        $regions = Region::regionsUniqueName()->get();
+        $regionsHasFarms = Region::regionsHasFarm(Request::get('region')??"Arusha", Request::get('product')??"Alizeti")
             ->orderByDesc('id')
             ->get();
 
-        $regions = Region::regionsUniqueName()->get();
+        $productVariety = $regionsHasFarms->pluck('product_name')->unique();
 
         $farmerCultivationDetailId = $regionsHasFarms->pluck('id');
 
+        $harvestExpectationChartData = FarmerCultivationDetail::expectedHarvest($farmerCultivationDetailId, 'expected_harvest')
+            ->get()->map(function ($data) {
+                return [
+                    'label' => $data->harvest_date['month_year'],
+                    'value' => $data->subtotal,
+                ];
+            });
 
-        $result = FarmerCultivationDetail::whereIn('id',$farmerCultivationDetailId)
-            ->selectRaw("harvest_date, count('id') as total ")
-            ->groupByRaw("MONTH(harvest_date), YEAR('2023')")
-            ->orderBy('harvest_date')
-            ->get();
+        $harvestChartData = FarmerCultivationDetail::expectedHarvest($farmerCultivationDetailId, 'harvest')
+            ->get()->map(function ($data) {
+                return [
+                    'label' => $data->harvest_date['month_year'],
+                    'value' => $data->subtotal,
+                ];
+            });
 
-        $harvest_expectation_chart = $result->map(function ($data){
-            return [
-                'date' => $data->harvest_date['month_year'],
-                'total' => $data->total,
-            ];
-        });
+        $totalNeedLoan = $regionsHasFarms->where('is_needs_loan', '=', 1)->count();
+        $totalHavingAgricultureSkills = $regionsHasFarms->where('is_having_agriculture_skills', '=', 1)->count();
+        $totalHavingIrrigationSystem = $regionsHasFarms->where('is_have_irrigation_system', '=', 1)->count();
+        $firstTime = $regionsHasFarms->where('is_first_time', '=', 1)->count();
+        $totalFarms = $farmerCultivationDetailId->count();
 
-
-
-
-
-
-
-        $productVariety = $regionsHasFarms->pluck('product_name')->unique();
         return response()->json([
-            'regions' => $regions,
-            'charts' => [
-                "harvest_expectation_chart" => $harvest_expectation_chart,
+
+            /*
+            * Here you can manage chart data form dashboard without touch front ends
+            * consider to add or remove cards here
+             * only Line and bar chart type
+            * */
+            'chartsForLineAndBar' => [
+                (new ChartsForLineAndBar(title: "Harvest Expectation"))->lineChart($harvestExpectationChartData->toArray()),
+                /*
+                 * for bar chart just call barChart method
+                 * */
+                (new ChartsForLineAndBar(title: "Harvest Results"))->barChart($harvestChartData->toArray()),
             ],
-            'productVariety'=> $productVariety,
-            'totalProductVariety'=> $productVariety->count(),
-            'totalFarmSize' => $regionsHasFarms->sum('farm_size'),
-            'totalExpectedHarvest' => $regionsHasFarms->sum('expected_harvest'),
-            'totalNeedLoan' => $regionsHasFarms->where('needs_loan','=',1)->count(),
-            'totalNeedFertilizer' => $regionsHasFarms->where('using_manure','=',1)->count(),
-            'totalFarms' => $farmerCultivationDetailId->count(),
-            'firstTime' => $regionsHasFarms->where('is_first_time','=',1)->count(),
-            'data' => $regionsHasFarms
+            /*
+             * Here you can manage card data form dashboard without touch front ends
+             * consider to add or remove cards here
+             * */
+
+            'dashboardWidgetCards' => [
+               (new DashboardWidgetCard(
+                   title:"Needs Loan" ,
+                   subtitle:"Farmers who needs loan" ,
+                   subtotal:$totalNeedLoan ,
+                   percentage: AppHelper::getPercentage($totalNeedLoan, $totalFarms))
+               )->getCard(),
+
+                (new DashboardWidgetCard(
+                   title:"Skills" ,
+                   subtitle:"Having Agriculture skills" ,
+                   subtotal:$totalHavingAgricultureSkills ,
+                   percentage: AppHelper::getPercentage($totalHavingAgricultureSkills, $totalFarms))
+               )->getCard(),
+
+                (new DashboardWidgetCard(
+                   title:"Irrigation" ,
+                   subtitle:"Using Irrigation system" ,
+                   subtotal:$totalHavingIrrigationSystem,
+                   percentage: AppHelper::getPercentage($totalHavingIrrigationSystem, $totalFarms))
+               )->getCard(),
+
+                (new DashboardWidgetCard(
+                   title:"New farmers" ,
+                   subtitle:"Farmer who are new in agriculture" ,
+                   subtotal:$totalHavingIrrigationSystem,
+                   percentage: AppHelper::getPercentage($firstTime, $totalFarms))
+               )->getCard(),
+            ],
+
+
+            /*
+             *Below value are required from front end
+             * */
+
+            'productVariety' => Product::select(['name'])->whereStatus(1)->get(),
+            'totalProductVariety' => number_format($productVariety->count()),
+            'totalFarmSize' => number_format($regionsHasFarms->sum('farm_size')),
+            'totalExpectedHarvest' => number_format($regionsHasFarms->sum('expected_harvest')),
+            'totalNeedFertilizer' => number_format($regionsHasFarms->where('is_using_fertilizer', '=', 1)->count()),
+            'totalFarms' => number_format($farmerCultivationDetailId->count()),
+            'data' => $regionsHasFarms,
+            'regions' => $regions,
         ]);
 
     }
+
 }

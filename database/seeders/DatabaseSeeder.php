@@ -70,6 +70,9 @@ class DatabaseSeeder extends Seeder
                     $time = strtotime($prepareDate);
                     $seedTypes = ['Hybrid seed','Local seed'];
 
+                    $harvestDate = date('Y-m-d',  strtotime("+3 month", $time));
+                    $isFuture = Carbon::parse($harvestDate)->isFuture();
+
 
 
                    $farm->farmerCultivationDetail()
@@ -79,18 +82,19 @@ class DatabaseSeeder extends Seeder
                        'product_id' => rand(1,$productCount),
                        //'last_harvest' => rand(20,300),
                        'expected_harvest' => rand(50,300),
-                       'harvest' => rand(40,370),
+                       'harvest' => $isFuture ? 0 : rand(40,370),
                        'prepare_date' => $prepareDate,
                        'plantation_date' => date('Y-m-d',  strtotime("+1 month", $time)),
                        'fertilizer_implementation_date' => date('Y-m-d',  strtotime("+2 month", $time)),
-                       'harvest_date' => date('Y-m-d',  strtotime("+3 month", $time)),
+                       'harvest_date' => $harvestDate,
                        'is_have_irrigation_system' => rand(0,1),
                        'is_first_time' => rand(0,1),
                        'is_having_agriculture_skills' => rand(0,1),
                        'is_needs_loan' => rand(0,1),
                        'is_already_have_loan' => rand(0,1),
                        'is_have_disaster_history' => rand(0,1),
-                       'is_using_fertilizer' => $seedTypes[rand(0,1)],
+                       'is_using_fertilizer' =>  $isFuture ? 0 : rand(0,1),
+                       'last_seed_type_used' => $seedTypes[rand(0,1)],
                    ]));
                }));
             });
