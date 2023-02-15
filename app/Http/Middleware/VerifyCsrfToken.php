@@ -12,9 +12,15 @@ class VerifyCsrfToken extends Middleware
      * @var array<int, string>
      */
     protected $except = [
-        'https://www.farmer.wiampro.co.tz/*',
-        'https://farmer.wiampro.co.tz/*',
-        'https://farmer-api.wiampro.co.tz/*',
-        'https://www.farmer-api.wiampro.co.tz/*',
+        'api/*',
+        'v1/*',
+        'farmer.wiampro.co.tz' => [
+            'prefix/*',
+            '*',
+        ],
+        'farmer-api.wiampro.co.tz' => [
+            'prefix/*',
+            '*',
+        ],
     ];
 }
