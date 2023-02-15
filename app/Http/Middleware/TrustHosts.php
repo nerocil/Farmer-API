@@ -15,7 +15,10 @@ class TrustHosts extends Middleware
     {
         return [
             $this->allSubdomainsOfApplicationUrl(),
+            'https://www.farmer.wiampro.co.tz',
             'https://farmer.wiampro.co.tz',
+            'https://farmer-api.wiampro.co.tz',
+            'https://www.farmer-api.wiampro.co.tz',
         ];
     }
 }
