@@ -32,9 +32,9 @@ class AuthenticationController extends Controller
 
         return response()->json([
             'email' => $user->email,
-            'token' => $user->createToken($onUserAttemptLoginRequest->get('device_name'))->plainTextToken,
-            'firstName' => $user->first_name,
-            'lastName' => $user->last_name,
+            'token' => $user->createToken($onUserAttemptLoginRequest->get('device_name')??"device_name")->plainTextToken,
+            'first_name' => $user->first_name,
+            'last_name' => $user->last_name,
             'gender' => $user->gender,
         ]);
     }

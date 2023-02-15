@@ -26,7 +26,7 @@ class OnUserAttemptLoginRequest extends FormRequest
         return [
             'email' => 'required|email|string',
             'password' => 'required|string',
-            'device_name' => 'required|string',
+            'device_name' => 'sometimes|string',
         ];
     }
 }
